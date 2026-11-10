@@ -33,9 +33,10 @@
                 <MudTd DataLabel="Cantidad">
                     <MudNumericField T="int"
                                      Value="@context.Cantidad"
-                                     ValueChanged="@(val => CarritoSvc.ActualizarCantidad(context.Producto.IdProducto, val))"
+                                     ValueChanged="@((int val) => { CarritoSvc.ActualizarCantidad(context.Producto.IdProducto, val); })"
                                      Min="0" Max="@context.Producto.StockActual"
-                                     Variant="Variant.Outlined" Margin="Margin.Dense" Style="width: 100px;" />
+                                     Variant="Variant.Outlined" Margin="Margin.Dense" Style="width: 100px;"
+                                     Immediate="false" />
                 </MudTd>
                 <MudTd DataLabel="Subtotal">@context.Subtotal.ToString("C")</MudTd>
                 <MudTd>
@@ -96,7 +97,7 @@
             {
                 Snackbar.Add("¡Pedido generado con éxito! Retíralo en el local.", Severity.Success);
                 CarritoSvc.VaciarCarrito();
-                Navigation.NavigateTo("/pedidos");
+                Navigation.NavigateTo("/"); // Redirige al inicio sin romper la app
             }
             else
             {
