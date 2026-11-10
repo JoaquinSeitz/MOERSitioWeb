@@ -1,42 +1,53 @@
 ﻿@inherits LayoutComponentBase
 @using Microsoft.AspNetCore.Components.Authorization
 
-<MudThemeProvider />
+<MudThemeProvider Theme="moerTheme" />
 <MudDialogProvider />
 <MudSnackbarProvider />
 <MudPopoverProvider />
 
 <MudLayout>
-    <!-- Barra Superior (App Bar) -->
-    <MudAppBar Elevation="1" Color="Color.Primary">
+    <!-- Barra Superior -->
+    <MudAppBar Elevation="2" Style="background-color: var(--mud-palette-appbar-background); color: var(--mud-palette-appbar-text);">
         <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start" OnClick="@((e) => DrawerToggle())" />
-        <MudText Typo="Typo.h6" Class="ml-3">TP3 Programacion Web</MudText>
+
+        <!-- Reemplazamos el texto plano por una tipografía más elegante -->
+        <MudText Typo="Typo.h5" Class="ml-3" Style="font-family: 'Georgia', serif; letter-spacing: 1px;">
+            Moer <span style="font-size: 14px; text-transform: uppercase; letter-spacing: 2px;">Estética</span>
+        </MudText>
+
         <MudSpacer />
 
-        <!-- Información de Usuario y Botón Salir -->
+        <!-- Información de Usuario, Carrito y Botones -->
         <AuthorizeView>
             <Authorized>
-                <MudText Typo="Typo.body2" Class="mr-4">@context.User.Identity?.Name</MudText>
-                <MudButton Variant="Variant.Filled" Color="Color.Secondary" Href="/logout" Size="Size.Small">
+                <MudText Typo="Typo.body2" Class="mr-4" Style="font-weight: 500;">Hola, @context.User.Identity?.Name</MudText>
+
+                <!-- El carrito solo lo ven los clientes -->
+                <AuthorizeView Roles="Cliente" Context="clienteContext">
+                    <MudIconButton Icon="@Icons.Material.Filled.ShoppingCart" Color="Color.Primary" Href="/carrito" Class="mr-3" />
+                </AuthorizeView>
+
+                <MudButton Variant="Variant.Outlined" Color="Color.Primary" Href="/logout" Size="Size.Small" Style="border-radius: 20px;">
                     SALIR
                 </MudButton>
             </Authorized>
             <NotAuthorized>
-                <MudButton Variant="Variant.Text" Color="Color.Inherit" Href="/login">
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" Href="/login" Style="border-radius: 20px; font-weight: bold;">
                     INICIAR SESIÓN
                 </MudButton>
             </NotAuthorized>
         </AuthorizeView>
     </MudAppBar>
 
-    <!-- Menú Lateral (Sidebar) -->
-    <MudDrawer @bind-Open="_drawerOpen" Elevation="2" ClipMode="DrawerClipMode.Always">
+    <!-- Menú Lateral -->
+    <MudDrawer @bind-Open="_drawerOpen" Elevation="3" ClipMode="DrawerClipMode.Always" Variant="DrawerVariant.Responsive">
         <NavMenu />
     </MudDrawer>
 
-    <!-- Contenido Principal donde cargan las páginas -->
+    <!-- Contenido Principal -->
     <MudMainContent>
-        <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-6 mb-6">
+        <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-6 mb-10">
             @Body
         </MudContainer>
     </MudMainContent>
@@ -49,4 +60,23 @@
     {
         _drawerOpen = !_drawerOpen;
     }
+
+    // --- PALETA DE COLORES PERSONALIZADA BASADA EN TUS IMÁGENES ---
+    MudTheme moerTheme = new MudTheme()
+    {
+        PaletteLight = new PaletteLight()
+        {
+            Primary = "#EEA96C",         // Durazno/Naranja del logo
+            Secondary = "#ADC8B2",       // Verde menta suave (Complementario)
+            Tertiary = "#F6DFD7",        // Rosa blush pastel de los fondos
+            AppbarBackground = "#FFFBF6",// Crema muy claro
+            AppbarText = "#4A4036",      // Marrón oscuro para contraste cálido
+            Background = "#FAF5F0",      // Fondo general marfil/crema
+            DrawerBackground = "#FFFBF6",// Fondo del menú lateral
+            DrawerText = "#4A4036",      // Texto del menú lateral
+            TextPrimary = "#3E362E",     // Color de texto general (marrón carbón)
+            PrimaryContrastText = "#FFFFFF", // Letras blancas sobre botones durazno
+            SecondaryContrastText = "#3E362E" // Letras oscuras sobre botones verde menta
+        }
+    };
 }

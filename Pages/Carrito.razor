@@ -1,0 +1,141 @@
+﻿@page "/carrito"
+@using MOERSitioWeb.DTOs
+@using MOERSitioWeb.Services
+@using System.Text.Json
+@inject CarritoService CarritoSvc
+@inject PedidoService PedidoService
+@inject NavigationManager Navigation
+@inject ISnackbar Snackbar
+@implements IDisposable
+@attribute [Authorize(Roles = "Cliente")]
+
+<MudContainer MaxWidth="MaxWidth.Medium" Class="mt-5">
+    <MudText Typo="Typo.h4" GutterBottom="true" Color="Color.Primary">Mi Carrito de Compras</MudText>
+
+    @if (!CarritoSvc.Items.Any())
+    {
+        <MudAlert Severity="Severity.Info" Class="mt-4">Tu carrito está vacío. ¡Visita el catálogo de productos!</MudAlert>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" Class="mt-4" Href="/productos">Ir a Productos</MudButton>
+    }
+    else
+    {
+        <MudTable Items="@CarritoSvc.Items" Hover="true" Breakpoint="Breakpoint.Sm" Elevation="4">
+            <HeaderContent>
+                <MudTh>Producto</MudTh>
+                <MudTh>Precio Unitario</MudTh>
+                <MudTh>Cantidad</MudTh>
+                <MudTh>Subtotal</MudTh>
+                <MudTh></MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd DataLabel="Producto">@context.Producto.Nombre</MudTd>
+                <MudTd DataLabel="Precio Unitario">@context.Producto.Precio.ToString("C")</MudTd>
+                <MudTd DataLabel="Cantidad">
+                    <MudNumericField T="int"
+                                     Value="@context.Cantidad"
+                                     ValueChanged="@(val => CarritoSvc.ActualizarCantidad(context.Producto.IdProducto, val))"
+                                     Min="0" Max="@context.Producto.StockActual"
+                                     Variant="Variant.Outlined" Margin="Margin.Dense" Style="width: 100px;" />
+                </MudTd>
+                <MudTd DataLabel="Subtotal">@context.Subtotal.ToString("C")</MudTd>
+                <MudTd>
+                    <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error"
+                                   OnClick="@(() => CarritoSvc.EliminarProducto(context.Producto.IdProducto))"
+                                   Title="Eliminar todo" />
+                </MudTd>
+            </RowTemplate>
+            <FooterContent>
+                <MudTh></MudTh>
+                <MudTh></MudTh>
+                <MudTh><MudText Typo="Typo.h6">Total:</MudText></MudTh>
+                <MudTh><MudText Typo="Typo.h6" Color="Color.Primary">@CarritoSvc.ObtenerTotal().ToString("C")</MudText></MudTh>
+                <MudTh></MudTh>
+            </FooterContent>
+        </MudTable>
+
+        <div class="d-flex justify-end mt-4">
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Large"
+                       OnClick="ConfirmarPedido" Disabled="@isSubmitting">
+                @if (isSubmitting)
+                {
+                    <MudProgressCircular Class="ms-n1" Size="Size.Small" Indeterminate="true" />
+                    <span class="ms-2">Procesando...</span>
+                }
+                else
+                {
+                    <span>Confirmar Pedido</span>
+                }
+            </MudButton>
+        </div>
+    }
+</MudContainer>
+
+@code {
+    private bool isSubmitting = false;
+
+    protected override void OnInitialized()
+    {
+        CarritoSvc.OnChange += StateHasChanged;
+    }
+
+    public void Dispose()
+    {
+        CarritoSvc.OnChange -= StateHasChanged;
+    }
+
+    private async Task ConfirmarPedido()
+    {
+        isSubmitting = true;
+        var dto = CarritoSvc.GenerarDTO();
+
+        try
+        {
+            var response = await PedidoService.CrearPedido(dto);
+
+            if (response.IsSuccessStatusCode)
+            {
+                Snackbar.Add("¡Pedido generado con éxito! Retíralo en el local.", Severity.Success);
+                CarritoSvc.VaciarCarrito();
+                Navigation.NavigateTo("/pedidos");
+            }
+            else
+            {
+                string mensajeError = "Error procesando el pedido.";
+
+                if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+                {
+                    mensajeError = "Sesión expirada o token inválido. Vuelve a iniciar sesión.";
+                }
+                else
+                {
+                    // Evita el crash al leer el JSON extrayendo primero el texto
+                    var errorStr = await response.Content.ReadAsStringAsync();
+                    try
+                    {
+                        var errorResult = JsonSerializer.Deserialize<ErrorResponse>(errorStr, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                        if (!string.IsNullOrEmpty(errorResult?.Mensaje))
+                        {
+                            mensajeError = errorResult.Mensaje;
+                        }
+                    }
+                    catch
+                    {
+                        mensajeError = $"Error del servidor: {response.StatusCode}. Revisa la consola/backend.";
+                    }
+                }
+
+                Snackbar.Add(mensajeError, Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Falla de red: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            isSubmitting = false;
+        }
+    }
+
+    private class ErrorResponse { public string Mensaje { get; set; } }
+}

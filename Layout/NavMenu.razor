@@ -1,26 +1,32 @@
-﻿@using Microsoft.AspNetCore.Components.Authorization
-<MudNavMenu>
-    <!-- Todo lo que esté aquí adentro SOLO se ve si el usuario está logueado -->
-    <AuthorizeView>
+﻿<MudNavMenu>
+    <!-- Enlaces Públicos (Disponibles para Visitantes, Clientes y Administradores) -->
+    <MudNavLink Href="/" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Home">Inicio</MudNavLink>
+    <MudNavLink Href="/tratamientos" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Spa">Tratamientos</MudNavLink>
+    <MudNavLink Href="/productos" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Storefront">Productos</MudNavLink>
+    <MudNavLink Href="/nosotros" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Info">Nosotros</MudNavLink>
+    <MudNavLink Href="/contacto" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.ContactPhone">Contacto</MudNavLink>
+
+    <!-- Enlaces exclusivos del Cliente -->
+    <AuthorizeView Roles="Cliente">
         <Authorized>
-            <MudNavLink Href="/" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Home">
-                Inicio
-            </MudNavLink>
-            <MudNavLink Href="/puntoventa" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.PointOfSale">
-                Punto Venta
-            </MudNavLink>
+            <MudNavGroup Title="Mi Cuenta" Icon="@Icons.Material.Filled.Person" Expanded="true">
+                <MudNavLink Href="/turnos" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.CalendarMonth">Mis Turnos</MudNavLink>
+                <MudNavLink Href="/pedidos" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.ShoppingBag">Mis Pedidos</MudNavLink>
+            </MudNavGroup>
         </Authorized>
     </AuthorizeView>
 
-    <!-- Solo lo ve el Administrador -->
-    <AuthorizeView Roles="Admin">
+    <!-- Enlaces exclusivos del Administrador -->
+    <AuthorizeView Roles="Administrador">
         <Authorized>
-            <MudNavLink Href="/ingresos" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Inventory">
-                Ingresos y Alta
-            </MudNavLink>
-            <MudNavLink Href="/reportes" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.PictureAsPdf">
-                Reportes PDF
-            </MudNavLink>
+            <MudNavGroup Title="Panel de Administración" Icon="@Icons.Material.Filled.AdminPanelSettings" Expanded="true">
+                <MudNavLink Href="/admin/agenda" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.EditCalendar">Gestión de Agenda</MudNavLink>
+                <MudNavLink Href="/admin/pedidos" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.LocalShipping">Gestión de Pedidos</MudNavLink>
+                <MudNavLink Href="/admin/productos" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Inventory">Catálogo Productos</MudNavLink>
+                <MudNavLink Href="/admin/servicios" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.MedicalServices">Catálogo Servicios</MudNavLink>
+                <MudNavLink Href="/admin/stock" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.AddBox">Ingreso de Stock</MudNavLink>
+                <MudNavLink Href="/admin/caja" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.PointOfSale">Caja y Pagos</MudNavLink>
+            </MudNavGroup>
         </Authorized>
     </AuthorizeView>
 </MudNavMenu>

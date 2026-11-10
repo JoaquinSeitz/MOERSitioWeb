@@ -1,8 +1,5 @@
 ﻿@page "/login"
-@using ProgramacionWebTrabajoPracticoN3.DTOs
-@using ProgramacionWebTrabajoPracticoN3.Services
-@using System.Net.Http.Json
-@using Microsoft.AspNetCore.Components.Authorization
+@* Los 'using' ya están definidos de forma global en _Imports.razor *@
 @inject HttpClient Http
 @inject LocalStorageService LocalStorage
 @inject AuthenticationStateProvider AuthStateProvider
@@ -17,7 +14,7 @@
         </MudCardHeader>
         <MudCardContent>
             <MudTextField @bind-Value="loginModel.Email" Label="Correo Electrónico" Variant="Variant.Outlined" Class="mb-4" />
-            <MudTextField @bind-Value="loginModel.Password" Label="Contraseña" Variant="Variant.Outlined" InputType="InputType.Password" Class="mb-4" />
+            <MudTextField @bind-Value="loginModel.Contrasenia" Label="Contraseña" Variant="Variant.Outlined" InputType="InputType.Password" Class="mb-4" />
 
             @if (!string.IsNullOrEmpty(errorMessage))
             {
@@ -40,8 +37,7 @@
 
         try
         {
-            // Petición POST a tu controlador
-            var response = await Http.PostAsJsonAsync("api/Usuarios/login", loginModel);
+            var response = await Http.PostAsJsonAsync("api/usuarios/login", loginModel);
 
             if (response.IsSuccessStatusCode)
             {
@@ -49,13 +45,6 @@
 
                 if (result != null && !string.IsNullOrEmpty(result.Token))
                 {
-                    // NUEVA BARRERA: Si es un cliente, le negamos la entrada a la web
-                    if (result.Rol == "Cliente")
-                    {
-                        errorMessage = "Acceso denegado. Esta plataforma es exclusiva para personal de caja. Por favor, utilice la App Móvil.";
-                        return; // Cortamos la ejecución aquí para que no guarde el token
-                    }
-
                     // 1. Guardar el token usando el servicio nativo
                     await LocalStorage.SetItemAsync("authToken", result.Token);
 
@@ -69,17 +58,15 @@
             }
             else
             {
-                errorMessage = "Credenciales incorrectas o el usuario está deshabilitado.";
+                errorMessage = "Credenciales incorrectas o el usuario no existe.";
             }
         }
         catch (HttpRequestException)
         {
-            // Error clásico cuando el Backend está apagado, el puerto es incorrecto o falla el CORS
             errorMessage = "No se pudo conectar con el servidor. Verifica que el backend esté en ejecución.";
         }
         catch (Exception ex)
         {
-            // Cualquier otro error interno (ej. fallo al leer el Token)
             errorMessage = $"Error interno: {ex.Message}";
         }
     }

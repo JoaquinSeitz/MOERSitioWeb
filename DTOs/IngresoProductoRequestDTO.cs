@@ -1,9 +1,13 @@
-﻿namespace ProgramacionWebTrabajoPracticoN3.DTOs
+﻿namespace MOERSitioWeb.DTOs;
+
+public class IngresoProductoRequestDTO
 {
-    public class IngresoProductoRequestDTO
-    {
-        public int ProveedorId { get; set; }
-        public int UsuarioId { get; set; }
-        public List<DetalleMovimientoRequestDTO> Detalles { get; set; } = new();
-    }
+    public List<DetalleIngresoRequestDTO> Detalles { get; set; } = new();
+}
+
+public class DetalleIngresoRequestDTO
+{
+    public int IdProducto { get; set; }
+    public int Cantidad { get; set; }
+    public decimal PrecioCompraUnitario { get; set; }
 }

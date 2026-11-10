@@ -1,8 +1,7 @@
-﻿namespace ProgramacionWebTrabajoPracticoN3.DTOs
+﻿namespace MOERSitioWeb.DTOs;
+
+public class CategoriaResponseDTO
 {
-    public class CategoriaResponseDTO
-    {
-        public int CategoriaId { get; set; }
-        public string Nombre { get; set; } = string.Empty;
-    }
+    public int IdCategoriaProducto { get; set; }
+    public string Nombre { get; set; } = string.Empty;
 }

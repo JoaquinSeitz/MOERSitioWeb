@@ -1,0 +1,62 @@
+﻿@page "/pedidos"
+@using MOERSitioWeb.DTOs
+@using MOERSitioWeb.Services
+@inject PedidoService PedidoService
+@attribute [Authorize(Roles = "Cliente")]
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-5">
+    <MudText Typo="Typo.h4" GutterBottom="true" Color="Color.Primary">Mis Pedidos</MudText>
+
+    @if (pedidos == null)
+    {
+        <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+    }
+    else if (!pedidos.Any())
+    {
+        <MudAlert Severity="Severity.Info">No tienes pedidos registrados.</MudAlert>
+    }
+    else
+    {
+        <MudExpansionPanels MultiExpansion="true" Elevation="4">
+            @foreach (var pedido in pedidos)
+            {
+                <MudExpansionPanel Text="@($"Pedido #{pedido.IdPedido} - {pedido.Fecha:dd/MM/yyyy} - Total: ${pedido.Total}")">
+                    <MudText Typo="Typo.body2" Class="mb-3">
+                        Estado actual: <MudChip T="string" Color="@GetEstadoColor(pedido.Estado)" Size="Size.Small">@pedido.Estado</MudChip>
+                    </MudText>
+
+                    <MudTable Items="@pedido.Detalles" Dense="true" Hover="true" Elevation="0">
+                        <HeaderContent>
+                            <MudTh>Producto</MudTh>
+                            <MudTh>Cantidad</MudTh>
+                            <MudTh>Subtotal</MudTh>
+                        </HeaderContent>
+                        <RowTemplate>
+                            <MudTd>@context.Producto</MudTd>
+                            <MudTd>@context.Cantidad</MudTd>
+                            <MudTd>$@context.Subtotal</MudTd>
+                        </RowTemplate>
+                    </MudTable>
+                </MudExpansionPanel>
+            }
+        </MudExpansionPanels>
+    }
+</MudContainer>
+
+@code {
+    private List<PedidoResponseDTO> pedidos;
+
+    protected override async Task OnInitializedAsync()
+    {
+        pedidos = await PedidoService.GetMisPedidos();
+    }
+
+    private Color GetEstadoColor(string estado) => estado switch
+    {
+        "Pendiente" => Color.Warning,
+        "Listo para retiro" => Color.Info,
+        "Entregado" => Color.Success,
+        "Cancelado" => Color.Error,
+        _ => Color.Default
+    };
+}

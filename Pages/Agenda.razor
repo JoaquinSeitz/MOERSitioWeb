@@ -1,0 +1,98 @@
+﻿@page "/admin/agenda"
+@using MOERSitioWeb.DTOs
+@using MOERSitioWeb.Services
+@inject TurnoService TurnoService
+@inject ISnackbar Snackbar
+@attribute [Authorize(Roles = "Administrador")]
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-5">
+    <MudText Typo="Typo.h4" GutterBottom="true" Color="Color.Primary">Gestión de Agenda</MudText>
+
+    <MudPaper Elevation="2" Class="pa-4 mb-5 d-flex align-center gap-4">
+        <MudDatePicker Label="Filtrar por fecha" @bind-Date="fechaFiltro" DisableToolbar="true" Variant="Variant.Outlined" Margin="Margin.Dense" Style="max-width: 300px;" />
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="CargarAgenda">Buscar</MudButton>
+    </MudPaper>
+
+    @if (turnos == null)
+    {
+        <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+    }
+    else if (!turnos.Any())
+    {
+        <MudAlert Severity="Severity.Info">No hay turnos registrados para esta fecha.</MudAlert>
+    }
+    else
+    {
+        <MudTable Items="@turnos" Hover="true" Breakpoint="Breakpoint.Sm" Elevation="4">
+            <HeaderContent>
+                <MudTh>Hora</MudTh>
+                <MudTh>Cliente</MudTh>
+                <MudTh>Teléfono</MudTh>
+                <MudTh>Servicio</MudTh>
+                <MudTh>Precio</MudTh>
+                <MudTh>Estado</MudTh>
+                <MudTh>Acciones</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd DataLabel="Hora">@context.HoraInicio.ToString(@"hh\:mm")</MudTd>
+                <MudTd DataLabel="Cliente">@context.ClienteNombre</MudTd>
+                <MudTd DataLabel="Teléfono">@context.ClienteTelefono</MudTd>
+                <MudTd DataLabel="Servicio">@context.Servicio</MudTd>
+                <MudTd DataLabel="Precio">$@context.Precio</MudTd>
+                <MudTd DataLabel="Estado">
+                    <MudChip T="string" Color="@GetEstadoColor(context.Estado)" Size="Size.Small">@context.Estado</MudChip>
+                </MudTd>
+                <MudTd DataLabel="Acciones">
+                    @if (context.Estado == "Pendiente")
+                    {
+                        <MudMenu Icon="@Icons.Material.Filled.MoreVert" Size="Size.Small" AnchorOrigin="Origin.BottomRight">
+                            <MudMenuItem OnClick="@(() => CambiarEstado(context.IdTurno, 2))" Icon="@Icons.Material.Filled.Check" IconColor="Color.Success">Completar</MudMenuItem>
+                            <MudMenuItem OnClick="@(() => CambiarEstado(context.IdTurno, 3))" Icon="@Icons.Material.Filled.Cancel" IconColor="Color.Error">Cancelar</MudMenuItem>
+                        </MudMenu>
+                    }
+                </MudTd>
+            </RowTemplate>
+        </MudTable>
+    }
+</MudContainer>
+
+@code {
+    private List<TurnoResponseDTO> turnos;
+    private DateTime? fechaFiltro = DateTime.Today;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CargarAgenda();
+    }
+
+    private async Task CargarAgenda()
+    {
+        turnos = null; // Para mostrar el spinner de carga al buscar
+        StateHasChanged();
+        turnos = await TurnoService.GetAgenda(fechaFiltro);
+    }
+
+    private async Task CambiarEstado(int idTurno, int idNuevoEstado)
+    {
+        var dto = new TurnoEstadoUpdateDTO { IdEstadoTurno = idNuevoEstado };
+        var response = await TurnoService.ActualizarEstadoTurno(idTurno, dto);
+
+        if (response.IsSuccessStatusCode)
+        {
+            Snackbar.Add("Estado del turno actualizado.", Severity.Success);
+            await CargarAgenda(); // Recargar la tabla para ver el cambio
+        }
+        else
+        {
+            Snackbar.Add("Ocurrió un error al actualizar el estado.", Severity.Error);
+        }
+    }
+
+    private Color GetEstadoColor(string estado) => estado switch
+    {
+        "Pendiente" => Color.Warning,
+        "Completado" => Color.Success,
+        "Cancelado" => Color.Error,
+        _ => Color.Default
+    };
+}

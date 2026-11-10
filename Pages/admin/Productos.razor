@@ -1,0 +1,158 @@
+﻿@page "/admin/productos"
+@using MOERSitioWeb.DTOs
+@using MOERSitioWeb.Services
+@inject ProductoAdminService ProductoAdminSvc
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@attribute [Authorize(Roles = "Administrador")]
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-5 mb-10">
+    <div class="d-flex justify-space-between align-center mb-4">
+        <MudText Typo="Typo.h4" Color="Color.Primary">Gestión de Productos</MudText>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" OnClick="AbrirDialogoNuevo">
+            Nuevo Producto
+        </MudButton>
+    </div>
+
+    <MudTable Items="@productos" Hover="true" Dense="true" Elevation="4" Loading="@cargando">
+        <HeaderContent>
+            <MudTh>Img</MudTh>
+            <MudTh>Nombre</MudTh>
+            <MudTh>Categoría</MudTh>
+            <MudTh>Precio</MudTh>
+            <MudTh>Stock</MudTh>
+            <MudTh>Estado</MudTh>
+            <MudTh>Acciones</MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd>
+                <MudAvatar Image="@(string.IsNullOrEmpty(context.Imagen) ? "images/producto-placeholder.jpg" : $"https://localhost:7133{context.Imagen}")" Size="Size.Large" Square="true" />
+            </MudTd>
+            <MudTd DataLabel="Nombre">@context.Nombre</MudTd>
+            <MudTd DataLabel="Categoría">@context.CategoriaNombre</MudTd>
+            <MudTd DataLabel="Precio">@context.Precio.ToString("C")</MudTd>
+            <MudTd DataLabel="Stock">@context.StockActual</MudTd>
+            <MudTd DataLabel="Estado">
+                <!-- Se agregó T="string" para evitar el error RZ10001 -->
+                <MudChip T="string" Color="@(context.Activo ? Color.Success : Color.Error)" Size="Size.Small">
+                    @(context.Activo ? "Activo" : "Oculto")
+                </MudChip>
+            </MudTd>
+            <MudTd>
+                <MudTooltip Text="Editar Info">
+                    <MudIconButton Icon="@Icons.Material.Filled.Edit" Color="Color.Warning" Size="Size.Small" OnClick="@(() => AbrirDialogoEditar(context))" />
+                </MudTooltip>
+
+                <MudTooltip Text="@(context.Activo ? "Ocultar del catálogo" : "Reactivar")">
+                    <MudIconButton Icon="@(context.Activo ? Icons.Material.Filled.VisibilityOff : Icons.Material.Filled.Visibility)"
+                                   Color="@(context.Activo ? Color.Error : Color.Success)"
+                                   Size="Size.Small" OnClick="@(() => CambiarEstado(context.IdProducto))" />
+                </MudTooltip>
+
+                <MudTooltip Text="Subir Imagen Real">
+                    <MudFileUpload T="IBrowserFile" Accept=".jpg,.jpeg,.png,.webp" FilesChanged="@(file => SubirImagen(context.IdProducto, file))" Style="display:inline-block; margin-top:-10px;">
+                        <ActivatorContent>
+                            <MudIconButton Icon="@Icons.Material.Filled.AddPhotoAlternate" Color="Color.Info" Size="Size.Small" />
+                        </ActivatorContent>
+                    </MudFileUpload>
+                </MudTooltip>
+            </MudTd>
+        </RowTemplate>
+    </MudTable>
+</MudContainer>
+
+@code {
+    private List<ProductoResponseDTO> productos = new();
+    private bool cargando = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CargarProductos();
+    }
+
+    private async Task CargarProductos()
+    {
+        cargando = true;
+        productos = await ProductoAdminSvc.GetTodosLosProductos();
+        cargando = false;
+    }
+
+    private async Task AbrirDialogoNuevo()
+    {
+        var parameters = new DialogParameters { ["dto"] = new ProductoCreateDTO(), ["EsNuevo"] = true };
+        var options = new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Small, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<ProductoDialog>("Nuevo Producto", parameters, options);
+        var result = await dialog.Result;
+
+        if (!result.Canceled)
+        {
+            var dto = (ProductoCreateDTO)result.Data;
+            var response = await ProductoAdminSvc.CrearProducto(dto);
+            if (response.IsSuccessStatusCode)
+            {
+                Snackbar.Add("Producto creado.", Severity.Success);
+                await CargarProductos();
+            }
+            else
+            {
+                Snackbar.Add("Error al crear el producto.", Severity.Error);
+            }
+        }
+    }
+
+    private async Task AbrirDialogoEditar(ProductoResponseDTO producto)
+    {
+        var dto = new ProductoCreateDTO
+        {
+            Nombre = producto.Nombre,
+            Descripcion = producto.Descripcion,
+            Precio = producto.Precio,
+            IdCategoriaProducto = producto.IdCategoriaProducto
+        };
+
+        var parameters = new DialogParameters { ["dto"] = dto, ["EsNuevo"] = false };
+        var options = new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Small, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<ProductoDialog>("Editar Producto", parameters, options);
+        var result = await dialog.Result;
+
+        if (!result.Canceled)
+        {
+            var response = await ProductoAdminSvc.ActualizarProducto(producto.IdProducto, (ProductoCreateDTO)result.Data);
+            if (response.IsSuccessStatusCode)
+            {
+                Snackbar.Add("Producto actualizado.", Severity.Success);
+                await CargarProductos();
+            }
+            else
+            {
+                Snackbar.Add("Error al actualizar.", Severity.Error);
+            }
+        }
+    }
+
+    private async Task CambiarEstado(int id)
+    {
+        var response = await ProductoAdminSvc.CambiarEstado(id);
+        if (response.IsSuccessStatusCode)
+        {
+            Snackbar.Add("Estado modificado exitosamente.", Severity.Info);
+            await CargarProductos();
+        }
+    }
+
+    private async Task SubirImagen(int id, IBrowserFile archivo)
+    {
+        if (archivo == null) return;
+
+        var response = await ProductoAdminSvc.SubirImagen(id, archivo);
+        if (response.IsSuccessStatusCode)
+        {
+            Snackbar.Add("Imagen subida correctamente.", Severity.Success);
+            await CargarProductos();
+        }
+        else
+        {
+            Snackbar.Add("Error al procesar la imagen.", Severity.Error);
+        }
+    }
+}

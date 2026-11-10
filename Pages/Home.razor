@@ -1,26 +1,87 @@
 ﻿@page "/"
 
-<MudContainer MaxWidth="MaxWidth.Medium" Class="mt-16" Style="text-align: center;">
-    <MudIcon Icon="@Icons.Material.Filled.Storefront" Style="font-size: 120px;" Color="Color.Primary" Class="mb-6" />
-    
-    <MudText Typo="Typo.h3" Color="Color.Primary" Class="mb-2">Sistema de Gestión ChangoMás</MudText>
-    <MudText Typo="Typo.h6" Color="Color.Secondary" Class="mb-8">Terminal de Punto de Venta y Control de Stock</MudText>
-    
-    <MudDivider Class="mb-8" />
-    
-    <AuthorizeView>
-        <Authorized>
-            <MudText Typo="Typo.body1">
-                Bienvenido/a. Utiliza el <strong>menú lateral</strong> para acceder a la Caja Registradora 
-                <AuthorizeView Roles="Admin" Context="adminContext">
-                    y al Ingreso de Mercadería.
-                </AuthorizeView>
-            </MudText>
-        </Authorized>
-        <NotAuthorized>
-            <MudAlert Severity="Severity.Info" ContentAlignment="HorizontalAlignment.Center">
-                Debes iniciar sesión en la esquina superior derecha para comenzar a operar.
-            </MudAlert>
-        </NotAuthorized>
-    </AuthorizeView>
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
+
+    <!-- Hero Section (Cartelera Principal) -->
+    <MudPaper Elevation="0" Class="pa-10 mb-10 text-center" Style="background-color: var(--mud-palette-tertiary); border-radius: 20px;">
+        <MudText Typo="Typo.h2" Color="Color.Primary" Style="font-family: 'Georgia', serif; font-weight: bold;" Class="mb-2">
+            Regalá Bienestar, Relax y Belleza
+        </MudText>
+        <MudText Typo="Typo.h6" Class="mb-8" Style="color: var(--mud-palette-text-primary);">
+            Descubrí nuestros tratamientos exclusivos y productos de alta cosmética para cuidar tu cuerpo y mente.
+        </MudText>
+
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Large" Href="/turnos" Class="mx-2" Style="border-radius: 30px; font-weight: bold; padding: 10px 30px;">
+            RESERVAR TURNO
+        </MudButton>
+        <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Large" Href="/productos" Class="mx-2" Style="border-radius: 30px; font-weight: bold; padding: 10px 30px; background-color: white;">
+            VER TIENDA
+        </MudButton>
+    </MudPaper>
+
+    <!-- Sección de Destacados (Basado en el folleto de 3 columnas) -->
+    <MudText Typo="Typo.h4" Align="Align.Center" Color="Color.Primary" Style="font-family: 'Georgia', serif;" Class="mb-8">
+        Nuestros Servicios Más Elegidos
+    </MudText>
+
+    <MudGrid Class="mb-10">
+        <!-- Tarjeta 1 -->
+        <MudItem xs="12" sm="6" md="4">
+            <MudCard Elevation="3" Style="border-radius: 15px; height: 100%;">
+                <MudCardHeader Style="background-color: var(--mud-palette-primary); color: white;">
+                    <CardHeaderContent>
+                        <MudText Typo="Typo.h6" Align="Align.Center">Spa de Pies</MudText>
+                    </CardHeaderContent>
+                </MudCardHeader>
+                <MudCardContent Class="text-center">
+                    <MudIcon Icon="@Icons.Material.Filled.SelfImprovement" Style="font-size: 60px;" Color="Color.Secondary" Class="my-4" />
+                    <MudText Typo="Typo.body1" Class="mb-2"><strong>♥ Spa de Pies</strong></MudText>
+                    <MudText Typo="Typo.body1" Class="mb-4"><strong>♥ Reflexología Podal</strong></MudText>
+                    <MudText Typo="Typo.body2">Para que tus pies también se sientan especiales.</MudText>
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+
+        <!-- Tarjeta 2 -->
+        <MudItem xs="12" sm="6" md="4">
+            <MudCard Elevation="3" Style="border-radius: 15px; height: 100%;">
+                <MudCardHeader Style="background-color: var(--mud-palette-secondary); color: var(--mud-palette-text-primary);">
+                    <CardHeaderContent>
+                        <MudText Typo="Typo.h6" Align="Align.Center">Combo Relax</MudText>
+                    </CardHeaderContent>
+                </MudCardHeader>
+                <MudCardContent Class="text-center">
+                    <MudIcon Icon="@Icons.Material.Filled.Spa" Style="font-size: 60px;" Color="Color.Primary" Class="my-4" />
+                    <MudText Typo="Typo.body1" Class="mb-2"><strong>♥ Masaje Descontracturante</strong></MudText>
+                    <MudText Typo="Typo.body1" Class="mb-4"><strong>♥ Limpieza de Espalda</strong></MudText>
+                    <MudText Typo="Typo.body2">Una experiencia completa para desconectar de la rutina.</MudText>
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+
+        <!-- Tarjeta 3 -->
+        <MudItem xs="12" sm="12" md="4">
+            <MudCard Elevation="3" Style="border-radius: 15px; height: 100%;">
+                <MudCardHeader Style="background-color: var(--mud-palette-primary); color: white;">
+                    <CardHeaderContent>
+                        <MudText Typo="Typo.h6" Align="Align.Center">Combo Facial</MudText>
+                    </CardHeaderContent>
+                </MudCardHeader>
+                <MudCardContent Class="text-center">
+                    <MudIcon Icon="@Icons.Material.Filled.FaceRetouchingNatural" Style="font-size: 60px;" Color="Color.Secondary" Class="my-4" />
+                    <MudText Typo="Typo.body1" Class="mb-2"><strong>♥ Limpieza Facial</strong></MudText>
+                    <MudText Typo="Typo.body1" Class="mb-4"><strong>♥ Reflexología Facial</strong></MudText>
+                    <MudText Typo="Typo.body2">Para un rostro más limpio, relajado y luminoso.</MudText>
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+    </MudGrid>
+
+    <!-- Footer rápido de contacto -->
+    <MudDivider Class="mb-6" />
+    <MudText Typo="Typo.body2" Align="Align.Center" Style="color: var(--mud-palette-text-primary);">
+        <MudIcon Icon="@Icons.Material.Filled.Phone" Size="Size.Small" Class="mr-1" /> 2954-203151 &nbsp;&nbsp;|&nbsp;&nbsp;
+        <MudIcon Class="mr-1" Icon="@Icons.Material.Filled.CameraAlt" Size="Size.Small" /> @@moer.estetica
+    </MudText>
+
 </MudContainer>

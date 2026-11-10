@@ -1,0 +1,190 @@
+﻿@page "/admin/stock"
+@using MOERSitioWeb.DTOs
+@using MOERSitioWeb.Services
+@inject CatalogoService CatalogoSvc
+@inject StockService StockSvc
+@inject ISnackbar Snackbar
+@attribute [Authorize(Roles = "Administrador")]
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-5">
+    <MudText Typo="Typo.h4" GutterBottom="true" Color="Color.Primary">Registrar Ingreso de Stock</MudText>
+
+    <MudGrid>
+        <!-- Formulario de ingreso de ítem -->
+        <MudItem xs="12" md="4">
+            <MudPaper Elevation="3" Class="pa-4">
+                <MudText Typo="Typo.h6" GutterBottom="true">Agregar al Remito</MudText>
+
+                <MudSelect T="ProductoResponseDTO" Label="Producto" @bind-Value="productoSeleccionado" ToStringFunc="@(p => p == null ? null : p.Nombre)" Variant="Variant.Outlined" Class="mb-4">
+                    @if (productosCatalogo != null)
+                    {
+                        @foreach (var prod in productosCatalogo)
+                        {
+                            <MudSelectItem Value="@prod" />
+                        }
+                    }
+                </MudSelect>
+
+                <MudNumericField @bind-Value="cantidad" Label="Cantidad a ingresar" Min="1" Variant="Variant.Outlined" Class="mb-4" />
+
+                <MudNumericField @bind-Value="precioCompra" Label="Precio de Compra Unitario" Min="0" Format="N2" Variant="Variant.Outlined" Class="mb-4" />
+
+                <MudButton Variant="Variant.Filled" Color="Color.Secondary" FullWidth="true" OnClick="AgregarAlRemito" Disabled="@(productoSeleccionado == null || cantidad < 1 || precioCompra < 0)">
+                    Añadir a la lista
+                </MudButton>
+            </MudPaper>
+        </MudItem>
+
+        <!-- Detalle del Remito Temporal -->
+        <MudItem xs="12" md="8">
+            <MudPaper Elevation="3" Class="pa-4">
+                <MudText Typo="Typo.h6" GutterBottom="true">Detalle del Ingreso</MudText>
+
+                @if (!detallesVisuales.Any())
+                {
+                    <MudAlert Severity="Severity.Normal" Class="mt-2">No hay productos en el remito actual.</MudAlert>
+                }
+                else
+                {
+                    <MudTable Items="@detallesVisuales" Hover="true" Dense="true" Elevation="0">
+                        <HeaderContent>
+                            <MudTh>Producto</MudTh>
+                            <MudTh>Cantidad</MudTh>
+                            <MudTh>Costo Unit.</MudTh>
+                            <MudTh>Subtotal</MudTh>
+                            <MudTh></MudTh>
+                        </HeaderContent>
+                        <RowTemplate>
+                            <MudTd DataLabel="Producto">@context.ProductoNombre</MudTd>
+                            <MudTd DataLabel="Cantidad">@context.Cantidad</MudTd>
+                            <MudTd DataLabel="Costo Unit.">@context.PrecioCompraUnitario.ToString("C")</MudTd>
+                            <MudTd DataLabel="Subtotal">@context.Subtotal.ToString("C")</MudTd>
+                            <MudTd>
+                                <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" Size="Size.Small" OnClick="@(() => EliminarDelRemito(context))" />
+                            </MudTd>
+                        </RowTemplate>
+                        <FooterContent>
+                            <MudTh></MudTh>
+                            <MudTh></MudTh>
+                            <MudTh><MudText Typo="Typo.subtitle1" Style="font-weight: bold;">TOTAL:</MudText></MudTh>
+                            <MudTh><MudText Typo="Typo.subtitle1" Color="Color.Primary" Style="font-weight: bold;">@detallesVisuales.Sum(d => d.Subtotal).ToString("C")</MudText></MudTh>
+                            <MudTh></MudTh>
+                        </FooterContent>
+                    </MudTable>
+
+                    <div class="d-flex justify-end mt-4">
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="ConfirmarIngreso" Disabled="@isSubmitting">
+                            @if (isSubmitting)
+                            {
+                                <MudProgressCircular Class="ms-n1" Size="Size.Small" Indeterminate="true" />
+                                <span class="ms-2">Guardando...</span>
+                            }
+                            else
+                            {
+                                <span>Confirmar Ingreso a Stock</span>
+                            }
+                        </MudButton>
+                    </div>
+                }
+            </MudPaper>
+        </MudItem>
+    </MudGrid>
+</MudContainer>
+
+@code {
+    private List<ProductoResponseDTO> productosCatalogo = new();
+    private ProductoResponseDTO productoSeleccionado;
+    private int cantidad = 1;
+    private decimal precioCompra = 0;
+
+    private List<DetalleRemitoVisual> detallesVisuales = new();
+    private bool isSubmitting = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Reutilizamos el servicio del catálogo para cargar el dropdown
+        productosCatalogo = await CatalogoSvc.GetProductosActivosAsync();
+    }
+
+    private void AgregarAlRemito()
+    {
+        if (productoSeleccionado == null) return;
+
+        var existente = detallesVisuales.FirstOrDefault(d => d.IdProducto == productoSeleccionado.IdProducto);
+        if (existente != null)
+        {
+            existente.Cantidad += cantidad;
+            // Promediamos o actualizamos el precio si se requiere, aquí optamos por pisarlo con el más reciente
+            existente.PrecioCompraUnitario = precioCompra;
+        }
+        else
+        {
+            detallesVisuales.Add(new DetalleRemitoVisual
+            {
+                IdProducto = productoSeleccionado.IdProducto,
+                ProductoNombre = productoSeleccionado.Nombre,
+                Cantidad = cantidad,
+                PrecioCompraUnitario = precioCompra
+            });
+        }
+
+        // Limpiar el formulario parcial
+        productoSeleccionado = null;
+        cantidad = 1;
+        precioCompra = 0;
+    }
+
+    private void EliminarDelRemito(DetalleRemitoVisual detalle)
+    {
+        detallesVisuales.Remove(detalle);
+    }
+
+    private async Task ConfirmarIngreso()
+    {
+        if (!detallesVisuales.Any()) return;
+
+        isSubmitting = true;
+
+        var dto = new IngresoProductoRequestDTO
+        {
+            Detalles = detallesVisuales.Select(d => new DetalleIngresoRequestDTO
+            {
+                IdProducto = d.IdProducto,
+                Cantidad = d.Cantidad,
+                PrecioCompraUnitario = d.PrecioCompraUnitario
+            }).ToList()
+        };
+
+        try
+        {
+            var response = await StockSvc.RegistrarIngreso(dto);
+            if (response.IsSuccessStatusCode)
+            {
+                Snackbar.Add("Ingreso registrado correctamente. El stock ha sido actualizado.", Severity.Success);
+                detallesVisuales.Clear();
+            }
+            else
+            {
+                Snackbar.Add("Error al registrar el ingreso.", Severity.Error);
+            }
+        }
+        catch (Exception)
+        {
+            Snackbar.Add("Error de conexión al guardar el ingreso.", Severity.Error);
+        }
+        finally
+        {
+            isSubmitting = false;
+        }
+    }
+
+    // Clase auxiliar para la UI de la tabla
+    private class DetalleRemitoVisual
+    {
+        public int IdProducto { get; set; }
+        public string ProductoNombre { get; set; }
+        public int Cantidad { get; set; }
+        public decimal PrecioCompraUnitario { get; set; }
+        public decimal Subtotal => Cantidad * PrecioCompraUnitario;
+    }
+}

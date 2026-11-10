@@ -1,0 +1,111 @@
+﻿@page "/agendar-turno"
+@using MOERSitioWeb.DTOs
+@using MOERSitioWeb.Services
+@inject TurnoService TurnoService
+@inject CatalogoService CatalogoService
+@inject NavigationManager Navigation
+@inject ISnackbar Snackbar
+@attribute [Authorize(Roles = "Cliente")]
+
+<MudContainer MaxWidth="MaxWidth.Small" Class="mt-8">
+    <MudPaper Elevation="4" Class="pa-8" Style="border-radius: 12px;">
+        <MudText Typo="Typo.h5" GutterBottom="true" Color="Color.Primary" Style="font-weight: 600;">Agendar Nuevo Turno</MudText>
+        <MudText Typo="Typo.body2" Class="mb-6" Color="Color.Surface">Selecciona el tratamiento, el día y la hora de tu preferencia.</MudText>
+
+        @if (cargandoServicios)
+        {
+            <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+        }
+        else
+        {
+            <EditForm Model="@turnoModel" OnValidSubmit="GuardarTurno">
+                <DataAnnotationsValidator />
+
+                <MudSelect T="int" Label="Tratamiento Estético" @bind-Value="turnoModel.IdServicio" Required="true" RequiredError="Debes seleccionar un servicio" Class="mb-5" Variant="Variant.Outlined" AnchorOrigin="Origin.BottomCenter">
+                    <MudSelectItem Value="0" Disabled="true">Seleccione una opción...</MudSelectItem>
+                    @foreach (var s in servicios)
+                    {
+                        <MudSelectItem Value="@s.IdServicio">@s.Nombre - $@s.Precio</MudSelectItem>
+                    }
+                </MudSelect>
+
+                <MudDatePicker Label="Fecha del Turno" @bind-Date="turnoModel.Fecha" Required="true" RequiredError="La fecha es obligatoria" Class="mb-5" Variant="Variant.Outlined" DisableToolbar="true" MinDate="DateTime.Today" />
+
+                <MudTimePicker Label="Hora de Inicio" @bind-Time="turnoModel.HoraInicio" Required="true" RequiredError="La hora es obligatoria" Class="mb-6" Variant="Variant.Outlined" AmPm="false" />
+
+                <div class="d-flex justify-space-between mt-2">
+                    <MudButton Variant="Variant.Text" Color="Color.Default" Href="/turnos">Cancelar</MudButton>
+                    <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Disabled="@isSubmitting" Size="Size.Large">
+                        @if (isSubmitting)
+                        {
+                            <MudProgressCircular Class="ms-n1" Size="Size.Small" Indeterminate="true" />
+                            <span class="ms-2">Procesando...</span>
+                        }
+                        else
+                        {
+                            <span>Confirmar Turno</span>
+                        }
+                    </MudButton>
+                </div>
+            </EditForm>
+        }
+    </MudPaper>
+</MudContainer>
+
+@code {
+    private TurnoCreateDTO turnoModel = new TurnoCreateDTO();
+    private List<ServicioResponseDTO> servicios = new();
+    private bool cargandoServicios = true;
+    private bool isSubmitting = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Al iniciar, consultamos los servicios disponibles para llenar el MudSelect
+        servicios = await CatalogoService.GetServiciosAsync();
+        cargandoServicios = false;
+    }
+
+    private async Task GuardarTurno()
+    {
+        // Validar que realmente seleccionó un servicio (MudSelect a veces inicializa en 0)
+        if (turnoModel.IdServicio == 0)
+        {
+            Snackbar.Add("Por favor, selecciona un tratamiento de la lista.", Severity.Warning);
+            return;
+        }
+
+        isSubmitting = true;
+
+        try
+        {
+            var response = await TurnoService.CrearTurno(turnoModel);
+
+            if (response.IsSuccessStatusCode)
+            {
+                Snackbar.Add("¡Turno agendado con éxito!", Severity.Success);
+                Navigation.NavigateTo("/turnos"); // Redirigir al historial
+            }
+            else
+            {
+                // Leer el mensaje de error del backend (ej. "El horario ya está ocupado")
+                var errorResult = await response.Content.ReadFromJsonAsync<ErrorResponse>();
+                string mensajeError = errorResult?.Mensaje ?? "No se pudo agendar el turno. Revisa la disponibilidad.";
+                Snackbar.Add(mensajeError, Severity.Error);
+            }
+        }
+        catch (Exception)
+        {
+            Snackbar.Add("Error de conexión con el servidor.", Severity.Error);
+        }
+        finally
+        {
+            isSubmitting = false;
+        }
+    }
+
+    // Clase interna rápida para capturar el JSON de error del backend ({ mensaje: "..." })
+    private class ErrorResponse
+    {
+        public string Mensaje { get; set; }
+    }
+}

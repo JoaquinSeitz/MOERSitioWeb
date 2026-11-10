@@ -1,64 +1,87 @@
-﻿using System.Security.Claims;
+﻿using Microsoft.AspNetCore.Components.Authorization;
+using System.Security.Claims;
 using System.Text.Json;
-using Microsoft.AspNetCore.Components.Authorization;
 
-namespace ProgramacionWebTrabajoPracticoN3.Services
+namespace MOERSitioWeb.Services
 {
     public class CustomAuthenticationStateProvider : AuthenticationStateProvider
     {
         private readonly LocalStorageService _localStorage;
+        private readonly HttpClient _httpClient;
 
-        public CustomAuthenticationStateProvider(LocalStorageService localStorage)
+        public CustomAuthenticationStateProvider(LocalStorageService localStorage, HttpClient httpClient)
         {
             _localStorage = localStorage;
+            _httpClient = httpClient;
         }
 
         public override async Task<AuthenticationState> GetAuthenticationStateAsync()
         {
             var token = await _localStorage.GetItemAsync<string>("authToken");
-
-            // Validamos que exista y que tenga el formato mínimo de un JWT (que contenga puntos)
-            if (string.IsNullOrWhiteSpace(token) || !token.Contains('.'))
+            if (string.IsNullOrWhiteSpace(token))
             {
                 return new AuthenticationState(new ClaimsPrincipal(new ClaimsIdentity()));
             }
 
-            try
-            {
-                var claims = ParseClaimsFromJwt(token);
-                var identity = new ClaimsIdentity(claims, "jwt");
-                var user = new ClaimsPrincipal(identity);
-                return new AuthenticationState(user);
-            }
-            catch
-            {
-                // Si el token está corrupto y falla al desencriptarse, forzamos el cierre de sesión en lugar de crashear
-                return new AuthenticationState(new ClaimsPrincipal(new ClaimsIdentity()));
-            }
+            _httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+
+            var claims = ParseClaimsFromJwt(token);
+            var identity = new ClaimsIdentity(claims, "jwt");
+            var user = new ClaimsPrincipal(identity);
+
+            return new AuthenticationState(user);
         }
 
-        // Método a llamar cuando el usuario hace login con éxito
         public void NotifyUserAuthentication(string token)
         {
-            var authenticatedUser = new ClaimsPrincipal(new ClaimsIdentity(ParseClaimsFromJwt(token), "jwt"));
+            var claims = ParseClaimsFromJwt(token);
+            var authenticatedUser = new ClaimsPrincipal(new ClaimsIdentity(claims, "jwt"));
             var authState = Task.FromResult(new AuthenticationState(authenticatedUser));
             NotifyAuthenticationStateChanged(authState);
         }
 
-        // Método a llamar cuando el usuario cierra sesión
         public void NotifyUserLogout()
         {
-            var authState = Task.FromResult(new AuthenticationState(new ClaimsPrincipal(new ClaimsIdentity())));
+            var anonymousUser = new ClaimsPrincipal(new ClaimsIdentity());
+            var authState = Task.FromResult(new AuthenticationState(anonymousUser));
             NotifyAuthenticationStateChanged(authState);
         }
 
-        // --- Funciones auxiliares para leer el JWT en Blazor WASM ---
         private IEnumerable<Claim> ParseClaimsFromJwt(string jwt)
         {
+            var claims = new List<Claim>();
             var payload = jwt.Split('.')[1];
             var jsonBytes = ParseBase64WithoutPadding(payload);
             var keyValuePairs = JsonSerializer.Deserialize<Dictionary<string, object>>(jsonBytes);
-            return keyValuePairs!.Select(kvp => new Claim(kvp.Key, kvp.Value.ToString()!));
+
+            if (keyValuePairs != null)
+            {
+                keyValuePairs.TryGetValue(ClaimTypes.Role, out object? roles);
+
+                if (roles != null)
+                {
+                    if (roles.ToString()!.Trim().StartsWith("["))
+                    {
+                        var parsedRoles = JsonSerializer.Deserialize<string[]>(roles.ToString()!);
+                        if (parsedRoles != null)
+                        {
+                            foreach (var parsedRole in parsedRoles)
+                            {
+                                claims.Add(new Claim(ClaimTypes.Role, parsedRole));
+                            }
+                        }
+                    }
+                    else
+                    {
+                        claims.Add(new Claim(ClaimTypes.Role, roles.ToString()!));
+                    }
+                    keyValuePairs.Remove(ClaimTypes.Role);
+                }
+
+                claims.AddRange(keyValuePairs.Select(kvp => new Claim(kvp.Key, kvp.Value.ToString()!)));
+            }
+
+            return claims;
         }
 
         private byte[] ParseBase64WithoutPadding(string base64)
