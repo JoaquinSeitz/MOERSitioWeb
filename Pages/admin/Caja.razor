@@ -1,0 +1,146 @@
+﻿@page "/admin/caja"
+@using MOERSitioWeb.DTOs
+@using MOERSitioWeb.Services
+@inject PagoService PagoService
+@inject PedidoService PedidoService
+@inject TurnoService TurnoService
+@inject ISnackbar Snackbar
+@attribute [Authorize(Roles = "Administrador")]
+
+<MudContainer MaxWidth="MaxWidth.Small" Class="mt-5">
+    <MudText Typo="Typo.h4" GutterBottom="true" Color="Color.Primary" Align="Align.Center">Caja y Cobros Presenciales</MudText>
+
+    <MudPaper Elevation="3" Class="pa-6 mt-4">
+        <EditForm Model="modelo" OnValidSubmit="ProcesarCobro">
+
+            <MudSelect T="string" Value="@tipoCobro" ValueChanged="OnTipoCobroCambiado" Label="¿Qué estás cobrando?" Variant="Variant.Outlined" Class="mb-4">
+                <MudSelectItem Value="@("Turno")">Servicio / Turno</MudSelectItem>
+                <MudSelectItem Value="@("Pedido")">Pedido de Tienda</MudSelectItem>
+            </MudSelect>
+
+            @if (tipoCobro == "Turno")
+            {
+                <MudAutocomplete T="TurnoResponseDTO" Label="Buscar Turno Pendiente (Nombre Cliente)" @bind-Value="turnoSeleccionado"
+                                 SearchFunc="@BuscarTurnos" ToStringFunc="@(t => t == null ? null : $"{t.ClienteNombre} - {t.Servicio} (${t.Precio})")"
+                                 Variant="Variant.Outlined" Class="mb-4" ResetValueOnEmptyText="true"
+                                 AdornmentIcon="@Icons.Material.Filled.Search" AdornmentColor="Color.Primary" />
+            }
+            else if (tipoCobro == "Pedido")
+            {
+                <MudAutocomplete T="PedidoResponseDTO" Label="Buscar Pedido Listo (Nombre Cliente)" @bind-Value="pedidoSeleccionado"
+                                 SearchFunc="@BuscarPedidos" ToStringFunc="@(p => p == null ? null : $"Pedido #{p.IdPedido} - {p.ClienteNombre} (${p.Total})")"
+                                 Variant="Variant.Outlined" Class="mb-4" ResetValueOnEmptyText="true"
+                                 AdornmentIcon="@Icons.Material.Filled.Search" AdornmentColor="Color.Primary" />
+            }
+
+            <MudSelect @bind-Value="modelo.IdMetodoPago" Label="Método de Pago" Variant="Variant.Outlined" AnchorOrigin="Origin.BottomCenter" Class="mb-5">
+                @foreach (var metodo in metodos)
+                {
+                    <MudSelectItem Value="@metodo.IdMetodoPago">@metodo.Nombre</MudSelectItem>
+                }
+            </MudSelect>
+
+            <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Success" FullWidth="true" Size="Size.Large">
+                Registrar Cobro
+            </MudButton>
+        </EditForm>
+    </MudPaper>
+</MudContainer>
+
+@code {
+    private PagoCreateDTO modelo = new PagoCreateDTO();
+    private List<MetodoPagoDTO> metodos = new List<MetodoPagoDTO>();
+
+    // Variables para el autocompletado
+    private List<TurnoResponseDTO> turnosPendientes = new();
+    private List<PedidoResponseDTO> pedidosListos = new();
+    private TurnoResponseDTO turnoSeleccionado;
+    private PedidoResponseDTO pedidoSeleccionado;
+
+    private string tipoCobro = "Turno";
+
+    protected override async Task OnInitializedAsync()
+    {
+        metodos = await PagoService.GetMetodosPago();
+        await CargarDatosParaCaja();
+    }
+
+    private async Task CargarDatosParaCaja()
+    {
+        // Traemos los turnos de hoy y filtramos solo los pendientes
+        var turnosHoy = await TurnoService.GetAgenda(DateTime.Today);
+        turnosPendientes = turnosHoy.Where(t => t.Estado == "Pendiente").ToList();
+
+        // Traemos todos los pedidos y filtramos los que están listos para pagar/retirar
+        var todosPedidos = await PedidoService.GetTodosLosPedidos();
+        pedidosListos = todosPedidos.Where(p => p.Estado == "Listo para Retiro" || p.Estado == "Pendiente").ToList();
+    }
+
+    private void OnTipoCobroCambiado(string value)
+    {
+        tipoCobro = value;
+        // Limpiamos las selecciones si el usuario cambia el tipo de cobro
+        turnoSeleccionado = null;
+        pedidoSeleccionado = null;
+    }
+
+    // Funciones de filtrado para el Autocomplete con el CancellationToken requerido
+    private async Task<IEnumerable<TurnoResponseDTO>> BuscarTurnos(string value, CancellationToken token)
+    {
+        await Task.Yield();
+        if (string.IsNullOrEmpty(value))
+            return turnosPendientes;
+
+        return turnosPendientes.Where(x => x.ClienteNombre.Contains(value, StringComparison.InvariantCultureIgnoreCase));
+    }
+
+    private async Task<IEnumerable<PedidoResponseDTO>> BuscarPedidos(string value, CancellationToken token)
+    {
+        await Task.Yield();
+        if (string.IsNullOrEmpty(value))
+            return pedidosListos;
+
+        return pedidosListos.Where(x => x.ClienteNombre.Contains(value, StringComparison.InvariantCultureIgnoreCase));
+    }
+
+    private async Task ProcesarCobro()
+    {
+        // Validamos que haya seleccionado algo de la lista
+        if (tipoCobro == "Turno" && turnoSeleccionado == null)
+        {
+            Snackbar.Add("Debe buscar y seleccionar un turno de la lista.", Severity.Warning);
+            return;
+        }
+        if (tipoCobro == "Pedido" && pedidoSeleccionado == null)
+        {
+            Snackbar.Add("Debe buscar y seleccionar un pedido de la lista.", Severity.Warning);
+            return;
+        }
+
+        // Asignamos los IDs correctos basados en su selección visual
+        modelo.IdTurno = tipoCobro == "Turno" ? turnoSeleccionado.IdTurno : null;
+        modelo.IdPedido = tipoCobro == "Pedido" ? pedidoSeleccionado.IdPedido : null;
+
+        var response = await PagoService.RegistrarPago(modelo);
+
+        if (response.IsSuccessStatusCode)
+        {
+            var result = await response.Content.ReadFromJsonAsync<PagoExitoResponse>();
+            Snackbar.Add($"Pago registrado con éxito. Total cobrado: ${result.Monto}", Severity.Success);
+
+            // Limpiar formulario y recargar las listas para que desaparezca el que ya cobramos
+            modelo = new PagoCreateDTO();
+            turnoSeleccionado = null;
+            pedidoSeleccionado = null;
+            await CargarDatosParaCaja();
+        }
+        else
+        {
+            var error = await response.Content.ReadFromJsonAsync<ErrorResponse>();
+            Snackbar.Add(error?.Mensaje ?? "Error al registrar el pago.", Severity.Error);
+        }
+    }
+
+    private class PagoExitoResponse { public decimal Monto { get; set; } }
+    private class ErrorResponse { public string Mensaje { get; set; } }
+}

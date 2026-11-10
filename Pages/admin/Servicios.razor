@@ -1,0 +1,104 @@
+﻿@page "/admin/servicios"
+@using MOERSitioWeb.DTOs
+@using MOERSitioWeb.Services
+@inject ServicioAdminService ServicioService
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@attribute [Authorize(Roles = "Administrador")]
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-5">
+    <MudText Typo="Typo.h4" GutterBottom="true" Color="Color.Primary">Catálogo de Servicios</MudText>
+
+    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" OnClick="AbrirDialogoNuevo" Class="mb-4">
+        Nuevo Tratamiento
+    </MudButton>
+
+    @if (servicios == null)
+    {
+        <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+    }
+    else
+    {
+        <MudTable Items="@servicios" Hover="true" Breakpoint="Breakpoint.Sm" Elevation="4">
+            <HeaderContent>
+                <MudTh>ID</MudTh>
+                <MudTh>Nombre</MudTh>
+                <MudTh>Categoría</MudTh>
+                <MudTh>Precio</MudTh>
+                <MudTh>Acciones</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd DataLabel="ID">@context.IdServicio</MudTd>
+                <MudTd DataLabel="Nombre">@context.Nombre</MudTd>
+                <MudTd DataLabel="Categoría">@context.NombreCategoria</MudTd>
+                <MudTd DataLabel="Precio">$@context.Precio</MudTd>
+                <MudTd DataLabel="Acciones">
+                    <MudIconButton Icon="@Icons.Material.Filled.Edit" Color="Color.Info" Size="Size.Small" OnClick="@(() => AbrirDialogoEditar(context))" />
+                    <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" Size="Size.Small" OnClick="@(() => Eliminar(context.IdServicio))" />
+                </MudTd>
+            </RowTemplate>
+        </MudTable>
+    }
+</MudContainer>
+
+@code {
+    private List<ServicioResponseDTO> servicios;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CargarServicios();
+    }
+
+    private async Task CargarServicios()
+    {
+        servicios = await ServicioService.GetServicios();
+    }
+
+    private async Task AbrirDialogoNuevo()
+    {
+        var dialog = DialogService.Show<ServicioDialog>("Nuevo Tratamiento");
+        var result = await dialog.Result;
+
+        if (!result.Canceled)
+        {
+            await CargarServicios();
+        }
+    }
+
+    private async Task AbrirDialogoEditar(ServicioResponseDTO servicio)
+    {
+        var parameters = new DialogParameters { ["ServicioExistente"] = servicio };
+        var dialog = DialogService.Show<ServicioDialog>("Editar Tratamiento", parameters);
+        var result = await dialog.Result;
+
+        if (!result.Canceled)
+        {
+            await CargarServicios();
+        }
+    }
+
+    private async Task Eliminar(int id)
+    {
+        bool? result = await DialogService.ShowMessageBox(
+            "Advertencia",
+            "¿Estás seguro de eliminar este tratamiento? (Fallará si tiene turnos asociados)",
+            yesText: "Eliminar", cancelText: "Cancelar");
+
+        if (result == true)
+        {
+            var response = await ServicioService.EliminarServicio(id);
+            if (response.IsSuccessStatusCode)
+            {
+                Snackbar.Add("Tratamiento eliminado.", Severity.Success);
+                await CargarServicios();
+            }
+            else
+            {
+                var error = await response.Content.ReadFromJsonAsync<ErrorResponse>();
+                Snackbar.Add(error?.Mensaje ?? "Error al eliminar.", Severity.Error);
+            }
+        }
+    }
+
+    private class ErrorResponse { public string Mensaje { get; set; } }
+}

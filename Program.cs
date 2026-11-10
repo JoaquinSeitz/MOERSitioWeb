@@ -22,6 +22,8 @@ builder.Services.AddScoped<CarritoService>(); // Agregado
 builder.Services.AddScoped<StockService>();
 builder.Services.AddScoped<ProductoAdminService>();
 builder.Services.AddScoped<CategoriaService>();
+builder.Services.AddScoped<ServicioAdminService>();
+builder.Services.AddScoped<PagoService>();
 
 // 3. Registrar el proveedor de estado de autenticación
 builder.Services.AddScoped<AuthenticationStateProvider, CustomAuthenticationStateProvider>();

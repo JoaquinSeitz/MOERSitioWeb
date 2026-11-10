@@ -1,0 +1,39 @@
+﻿@page "/contacto"
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-5">
+    <MudText Typo="Typo.h3" Align="Align.Center" Color="Color.Primary" Class="mb-4">Contacto</MudText>
+
+    <MudGrid>
+        <MudItem xs="12" md="6">
+            <MudPaper Elevation="2" Class="pa-5 h-100">
+                <MudText Typo="Typo.h6" GutterBottom="true">Nuestros Datos</MudText>
+                <MudList T="string">
+                    <MudListItem Icon="@Icons.Material.Filled.LocationOn">
+                        Dirección: (Calle de relleno 123, Santa Rosa)
+                    </MudListItem>
+                    <MudListItem Icon="@Icons.Material.Filled.Phone">
+                        Teléfono: 2954-203151
+                    </MudListItem>
+                    <MudListItem Icon="@Icons.Material.Filled.Email">
+                        Email: info@moerestetica.com
+                    </MudListItem>
+                    <MudListItem Icon="@Icons.Custom.Brands.Instagram">
+                        Instagram: @@moer.estetica
+                    </MudListItem>
+                </MudList>
+            </MudPaper>
+        </MudItem>
+        <MudItem xs="12" md="6">
+            <MudPaper Elevation="2" Class="pa-5">
+                <MudText Typo="Typo.h6" GutterBottom="true">Envíanos un mensaje</MudText>
+                <MudTextField T="string" Label="Nombre" Variant="Variant.Outlined" Class="mb-3" />
+                <MudTextField T="string" Label="Email" Variant="Variant.Outlined" Class="mb-3" />
+                <MudTextField T="string" Label="Mensaje" Variant="Variant.Outlined" Lines="4" Class="mb-3" />
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" FullWidth="true">Enviar</MudButton>
+            </MudPaper>
+        </MudItem>
+    </MudGrid>
+</MudContainer>
+
+@code {
+}

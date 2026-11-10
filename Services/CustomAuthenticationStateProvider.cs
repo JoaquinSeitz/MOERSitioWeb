@@ -20,9 +20,12 @@ namespace MOERSitioWeb.Services
             var token = await _localStorage.GetItemAsync<string>("authToken");
             if (string.IsNullOrWhiteSpace(token))
             {
+                // Limpiar la cabecera por seguridad si no hay token
+                _httpClient.DefaultRequestHeaders.Authorization = null;
                 return new AuthenticationState(new ClaimsPrincipal(new ClaimsIdentity()));
             }
 
+            // Adjuntar el token al inicializar la app
             _httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
 
             var claims = ParseClaimsFromJwt(token);
@@ -34,6 +37,9 @@ namespace MOERSitioWeb.Services
 
         public void NotifyUserAuthentication(string token)
         {
+            // CRÍTICO: Adjuntar el token inmediatamente después del login
+            _httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+
             var claims = ParseClaimsFromJwt(token);
             var authenticatedUser = new ClaimsPrincipal(new ClaimsIdentity(claims, "jwt"));
             var authState = Task.FromResult(new AuthenticationState(authenticatedUser));
@@ -42,6 +48,9 @@ namespace MOERSitioWeb.Services
 
         public void NotifyUserLogout()
         {
+            // Limpiar el token al cerrar sesión
+            _httpClient.DefaultRequestHeaders.Authorization = null;
+
             var anonymousUser = new ClaimsPrincipal(new ClaimsIdentity());
             var authState = Task.FromResult(new AuthenticationState(anonymousUser));
             NotifyAuthenticationStateChanged(authState);

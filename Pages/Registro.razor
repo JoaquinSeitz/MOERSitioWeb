@@ -1,0 +1,117 @@
+﻿@page "/registro"
+@using MOERSitioWeb.DTOs
+@using MOERSitioWeb.Services
+@inject HttpClient Http
+@inject LocalStorageService LocalStorage
+@inject AuthenticationStateProvider AuthStateProvider
+@inject NavigationManager NavigationManager
+
+<MudContainer MaxWidth="MaxWidth.Small" Class="mt-16 mb-16">
+    <MudCard Elevation="4">
+        <MudCardHeader>
+            <CardHeaderContent>
+                <MudText Typo="Typo.h5" Align="Align.Center" Color="Color.Primary">Crear Cuenta</MudText>
+            </CardHeaderContent>
+        </MudCardHeader>
+        <MudCardContent>
+            <EditForm Model="registroModel" OnValidSubmit="HandleRegistro">
+                <DataAnnotationsValidator />
+
+                <MudTextField @bind-Value="registroModel.Nombre" Label="Nombre" For="@(() => registroModel.Nombre)" Variant="Variant.Outlined" Class="mb-4" />
+                <MudTextField @bind-Value="registroModel.Apellido" Label="Apellido" For="@(() => registroModel.Apellido)" Variant="Variant.Outlined" Class="mb-4" />
+                <MudTextField @bind-Value="registroModel.Telefono" Label="Teléfono (Opcional)" Variant="Variant.Outlined" Class="mb-4" />
+
+                <MudTextField @bind-Value="registroModel.Email" Label="Correo Electrónico" For="@(() => registroModel.Email)" Variant="Variant.Outlined" Class="mb-4" />
+                <MudTextField @bind-Value="registroModel.Contrasenia" Label="Contraseña" For="@(() => registroModel.Contrasenia)" Variant="Variant.Outlined" InputType="InputType.Password" Class="mb-4" />
+
+                @if (!string.IsNullOrEmpty(errorMessage))
+                {
+                    <MudAlert Severity="Severity.Error" Class="mb-4">@errorMessage</MudAlert>
+                }
+
+                @if (isLoading)
+                {
+                    <div class="d-flex justify-center mb-4">
+                        <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+                    </div>
+                }
+
+                <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" FullWidth="true" Size="Size.Large" Disabled="@isLoading">
+                    Registrarme
+                </MudButton>
+            </EditForm>
+        </MudCardContent>
+        <MudCardActions Class="justify-center pb-4">
+            <MudText Typo="Typo.body2">
+                ¿Ya tenés cuenta? <MudLink Href="/login" Color="Color.Secondary">Iniciá sesión acá</MudLink>
+            </MudText>
+        </MudCardActions>
+    </MudCard>
+</MudContainer>
+
+@code {
+    private RegistroUsuarioDTO registroModel = new();
+    private string errorMessage = string.Empty;
+    private bool isLoading = false;
+
+    private async Task HandleRegistro()
+    {
+        errorMessage = string.Empty;
+        isLoading = true;
+
+        try
+        {
+            // 1. Enviar datos de registro al backend
+            var responseRegistro = await Http.PostAsJsonAsync("api/usuarios/registro", registroModel);
+
+            if (responseRegistro.IsSuccessStatusCode)
+            {
+                // 2. Si el registro fue exitoso, auto-logueamos al usuario para obtener el token JWT
+                var loginModel = new LoginDTO
+                {
+                    Email = registroModel.Email,
+                    Contrasenia = registroModel.Contrasenia
+                };
+
+                var responseLogin = await Http.PostAsJsonAsync("api/usuarios/login", loginModel);
+
+                if (responseLogin.IsSuccessStatusCode)
+                {
+                    var result = await responseLogin.Content.ReadFromJsonAsync<LoginResponseDTO>();
+                    if (result != null && !string.IsNullOrEmpty(result.Token))
+                    {
+                        await LocalStorage.SetItemAsync("authToken", result.Token);
+                        var customAuthStateProvider = (CustomAuthenticationStateProvider)AuthStateProvider;
+                        customAuthStateProvider.NotifyUserAuthentication(result.Token);
+                        NavigationManager.NavigateTo("/");
+                    }
+                }
+                else
+                {
+                    // Si el login automático falla (muy raro), lo mandamos al login manual
+                    NavigationManager.NavigateTo("/login");
+                }
+            }
+            else
+            {
+                // Leer el mensaje de error que devuelve el backend (ej. "El email ya está registrado")
+                var error = await responseRegistro.Content.ReadFromJsonAsync<ErrorResponse>();
+                errorMessage = error?.Mensaje ?? "Ocurrió un error al crear la cuenta.";
+            }
+        }
+        catch (HttpRequestException)
+        {
+            errorMessage = "No se pudo conectar con el servidor.";
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error interno: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private class ErrorResponse { public string Mensaje { get; set; } }
+}

@@ -1,5 +1,6 @@
 ﻿@page "/login"
-@* Los 'using' ya están definidos de forma global en _Imports.razor *@
+@using MOERSitioWeb.DTOs
+@using MOERSitioWeb.Services
 @inject HttpClient Http
 @inject LocalStorageService LocalStorage
 @inject AuthenticationStateProvider AuthStateProvider
@@ -21,8 +22,14 @@
                 <MudAlert Severity="Severity.Error" Class="mb-4">@errorMessage</MudAlert>
             }
         </MudCardContent>
-        <MudCardActions>
-            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="HandleLogin" FullWidth="true" Size="Size.Large">Entrar</MudButton>
+        <MudCardActions Class="flex-column align-stretch">
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="HandleLogin" FullWidth="true" Size="Size.Large" Class="mb-3">
+                Entrar
+            </MudButton>
+
+            <MudText Typo="Typo.body2" Align="Align.Center">
+                ¿No tenés cuenta? <MudLink Href="/registro" Color="Color.Secondary">Registrate acá</MudLink>
+            </MudText>
         </MudCardActions>
     </MudCard>
 </MudContainer>
@@ -45,14 +52,9 @@
 
                 if (result != null && !string.IsNullOrEmpty(result.Token))
                 {
-                    // 1. Guardar el token usando el servicio nativo
                     await LocalStorage.SetItemAsync("authToken", result.Token);
-
-                    // 2. Avisarle a la aplicación que el usuario se logueó
                     var customAuthStateProvider = (CustomAuthenticationStateProvider)AuthStateProvider;
                     customAuthStateProvider.NotifyUserAuthentication(result.Token);
-
-                    // 3. Redirigir al inicio
                     NavigationManager.NavigateTo("/");
                 }
             }

@@ -1,0 +1,75 @@
+﻿@using MOERSitioWeb.DTOs
+@using MOERSitioWeb.Services
+@inject ServicioAdminService ServicioService
+@inject CategoriaService CategoriaService
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <DialogContent>
+        <EditForm Model="modelo" OnValidSubmit="Guardar">
+            <DataAnnotationsValidator />
+
+            <MudTextField @bind-Value="modelo.Nombre" Label="Nombre" For="@(() => modelo.Nombre)" Variant="Variant.Outlined" Margin="Margin.Dense" Class="mb-3" />
+            <MudTextField @bind-Value="modelo.Descripcion" Label="Descripción" For="@(() => modelo.Descripcion)" Variant="Variant.Outlined" Margin="Margin.Dense" Lines="3" Class="mb-3" />
+            <MudNumericField @bind-Value="modelo.Precio" Label="Precio" For="@(() => modelo.Precio)" Variant="Variant.Outlined" Margin="Margin.Dense" Min="0" Class="mb-3" />
+
+            <MudSelect @bind-Value="modelo.IdCategoriaServicio" Label="Categoría" Variant="Variant.Outlined" Margin="Margin.Dense" AnchorOrigin="Origin.BottomCenter">
+                @foreach (var cat in categorias)
+                {
+                    <MudSelectItem Value="@cat.IdCategoriaProducto">@cat.Nombre</MudSelectItem>
+                }
+            </MudSelect>
+            <MudText Color="Color.Error">
+                <ValidationMessage For="@(() => modelo.IdCategoriaServicio)" />
+            </MudText>
+
+            <div class="d-flex justify-end mt-4">
+                <MudButton OnClick="Cancelar" Class="mr-2">Cancelar</MudButton>
+                <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary">Guardar</MudButton>
+            </div>
+        </EditForm>
+    </DialogContent>
+</MudDialog>
+
+@code {
+    [CascadingParameter] IMudDialogInstance MudDialog { get; set; }
+    [Parameter] public ServicioResponseDTO ServicioExistente { get; set; }
+
+    private ServicioCreateDTO modelo = new ServicioCreateDTO();
+    private List<CategoriaResponseDTO> categorias = new List<CategoriaResponseDTO>();
+    private bool esEdicion => ServicioExistente != null;
+
+    protected override async Task OnInitializedAsync()
+    {
+        categorias = await CategoriaService.GetCategoriasServicios();
+
+        if (esEdicion)
+        {
+            modelo.Nombre = ServicioExistente.Nombre;
+            modelo.Descripcion = ServicioExistente.Descripcion;
+            modelo.Precio = ServicioExistente.Precio;
+            modelo.IdCategoriaServicio = ServicioExistente.IdCategoriaServicio;
+        }
+    }
+
+    private async Task Guardar()
+    {
+        HttpResponseMessage response;
+        if (esEdicion)
+            response = await ServicioService.ActualizarServicio(ServicioExistente.IdServicio, modelo);
+        else
+            response = await ServicioService.CrearServicio(modelo);
+
+        if (response.IsSuccessStatusCode)
+        {
+            Snackbar.Add(esEdicion ? "Actualizado correctamente." : "Creado correctamente.", Severity.Success);
+            MudDialog.Close(DialogResult.Ok(true));
+        }
+        else
+        {
+            Snackbar.Add("Ocurrió un error.", Severity.Error);
+        }
+    }
+
+    private void Cancelar() => MudDialog.Cancel();
+}

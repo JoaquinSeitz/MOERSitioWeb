@@ -10,4 +10,7 @@ public class CategoriaService
 
     public async Task<List<CategoriaResponseDTO>> GetCategoriasProductos()
         => await _http.GetFromJsonAsync<List<CategoriaResponseDTO>>("api/categorias/productos") ?? new();
+
+    public async Task<List<CategoriaResponseDTO>> GetCategoriasServicios()
+        => await _http.GetFromJsonAsync<List<CategoriaResponseDTO>>("api/categorias/servicios") ?? new();
 }
