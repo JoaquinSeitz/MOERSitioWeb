@@ -13,10 +13,11 @@
             <MudTextField @bind-Value="modelo.Descripcion" Label="Descripción" For="@(() => modelo.Descripcion)" Variant="Variant.Outlined" Margin="Margin.Dense" Lines="3" Class="mb-3" />
             <MudNumericField @bind-Value="modelo.Precio" Label="Precio" For="@(() => modelo.Precio)" Variant="Variant.Outlined" Margin="Margin.Dense" Min="0" Class="mb-3" />
 
-            <MudSelect @bind-Value="modelo.IdCategoriaServicio" Label="Categoría" Variant="Variant.Outlined" Margin="Margin.Dense" AnchorOrigin="Origin.BottomCenter">
+            <MudSelect T="int" @bind-Value="modelo.IdCategoriaServicio" Label="Categoría" Variant="Variant.Outlined" Margin="Margin.Dense" AnchorOrigin="Origin.BottomCenter">
                 @foreach (var cat in categorias)
                 {
-                    <MudSelectItem Value="@cat.IdCategoriaProducto">@cat.Nombre</MudSelectItem>
+                    <!-- Aseguramos que tome el ID correcto para servicios -->
+                    <MudSelectItem T="int" Value="@cat.IdCategoriaServicio">@cat.Nombre</MudSelectItem>
                 }
             </MudSelect>
             <MudText Color="Color.Error">
@@ -67,7 +68,35 @@
         }
         else
         {
-            Snackbar.Add("Ocurrió un error.", Severity.Error);
+            try
+            {
+                var errorStr = await response.Content.ReadAsStringAsync();
+                var jsonDoc = System.Text.Json.JsonDocument.Parse(errorStr);
+
+                string mensajeFallo = "Ocurrió un error en el servidor.";
+
+                // Atrapa el error exacto de SQL (ej. violación de clave foránea)
+                if (jsonDoc.RootElement.TryGetProperty("error", out var errorElement))
+                {
+                    mensajeFallo = errorElement.GetString();
+                }
+                // Atrapa mensajes de validación propios
+                else if (jsonDoc.RootElement.TryGetProperty("mensaje", out var msgElement))
+                {
+                    mensajeFallo = msgElement.GetString();
+                }
+                // Atrapa errores nativos de ASP.NET
+                else if (jsonDoc.RootElement.TryGetProperty("title", out var titleElement))
+                {
+                    mensajeFallo = "Validación: " + titleElement.GetString();
+                }
+
+                Snackbar.Add(mensajeFallo, Severity.Error);
+            }
+            catch
+            {
+                Snackbar.Add($"Error HTTP {response.StatusCode}", Severity.Error);
+            }
         }
     }
 

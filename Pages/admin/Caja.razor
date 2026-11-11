@@ -67,13 +67,12 @@
 
     private async Task CargarDatosParaCaja()
     {
-        // Traemos los turnos de hoy y filtramos solo los pendientes
         var turnosHoy = await TurnoService.GetAgenda(DateTime.Today);
         turnosPendientes = turnosHoy.Where(t => t.Estado == "Pendiente").ToList();
 
-        // Traemos todos los pedidos y filtramos los que están listos para pagar/retirar
         var todosPedidos = await PedidoService.GetTodosLosPedidos();
-        pedidosListos = todosPedidos.Where(p => p.Estado == "Listo para Retiro" || p.Estado == "Pendiente").ToList();
+        // Ahora solo carga los que el administrador ya marcó como listos
+        pedidosListos = todosPedidos.Where(p => p.Estado == "Listo para Retiro").ToList();
     }
 
     private void OnTipoCobroCambiado(string value)

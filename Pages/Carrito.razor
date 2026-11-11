@@ -109,19 +109,23 @@
                 }
                 else
                 {
-                    // Evita el crash al leer el JSON extrayendo primero el texto
                     var errorStr = await response.Content.ReadAsStringAsync();
                     try
                     {
-                        var errorResult = JsonSerializer.Deserialize<ErrorResponse>(errorStr, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-                        if (!string.IsNullOrEmpty(errorResult?.Mensaje))
+                        var jsonDoc = JsonDocument.Parse(errorStr);
+                        if (jsonDoc.RootElement.TryGetProperty("mensaje", out var msgElement))
                         {
-                            mensajeError = errorResult.Mensaje;
+                            mensajeError = msgElement.GetString();
+                        }
+                        else if (jsonDoc.RootElement.TryGetProperty("title", out var titleElement))
+                        {
+                            // Esto capturará los errores de validación nativos de ASP.NET
+                            mensajeError = "Datos incorrectos: " + titleElement.GetString();
                         }
                     }
                     catch
                     {
-                        mensajeError = $"Error del servidor: {response.StatusCode}. Revisa la consola/backend.";
+                        mensajeError = $"Error del servidor: {response.StatusCode}.";
                     }
                 }
 

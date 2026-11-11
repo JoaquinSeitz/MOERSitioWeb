@@ -8,9 +8,11 @@
 <MudContainer MaxWidth="MaxWidth.Large" Class="mt-5">
     <MudText Typo="Typo.h4" GutterBottom="true" Color="Color.Primary">Gestión de Agenda</MudText>
 
+    <!-- Reemplaza tu MudPaper actual con este -->
     <MudPaper Elevation="2" Class="pa-4 mb-5 d-flex align-center gap-4">
         <MudDatePicker Label="Filtrar por fecha" @bind-Date="fechaFiltro" DisableToolbar="true" Variant="Variant.Outlined" Margin="Margin.Dense" Style="max-width: 300px;" />
         <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="CargarAgenda">Buscar</MudButton>
+        <MudButton Variant="Variant.Outlined" Color="Color.Secondary" OnClick="LimpiarFiltro">Ver Todos</MudButton>
     </MudPaper>
 
     @if (turnos == null)
@@ -64,7 +66,12 @@
     {
         await CargarAgenda();
     }
-
+    // Añade este método en el bloque @code
+    private async Task LimpiarFiltro()
+    {
+        fechaFiltro = null;
+        await CargarAgenda();
+    }
     private async Task CargarAgenda()
     {
         turnos = null; // Para mostrar el spinner de carga al buscar
